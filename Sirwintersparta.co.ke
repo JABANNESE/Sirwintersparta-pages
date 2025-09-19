@@ -1,9 +1,9 @@
  index.html
-├── blog.html
-├── packages_.html
-├── Assets/
-│   ├── style.css
-│   └── script.js
-└── functions/
-    └── api/
-        └── [[path]].js  ← Put Worker code here
+ blog.html
+ packages_.html
+ Assets/
+ style.css
+    script.js
+ functions/
+     api/
+    [[path]].js  ← Put Worker code here
