@@ -1,0 +1,238 @@
+functions/api/[[path]].js
+// Cloudflare Pages Function - [[path]].js
+export async function onRequest(context) {
+  const { request, env } = context;
+  const url = new URL(request.url);
+  const path = url.pathname.replace('/api', '');
+  
+  // CORS headers for all API responses
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  };
+  
+  // Handle preflight requests
+  if (request.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+  
+  try {
+    let response;
+    
+    switch (path) {
+      case '/config':
+        response = await getSiteConfig(env);
+        break;
+        
+      case '/slogans':
+        response = await getSlogans(env);
+        break;
+        
+      case '/blog/posts':
+        response = await getBlogPosts(env);
+        break;
+        
+      case '/blog/generate':
+        if (request.method === 'POST') {
+          response = await generateBlogPost(request, env);
+        } else {
+          response = new Response('Method not allowed', { status: 405 });
+        }
+        break;
+        
+      case '/products/tshirts':
+        response = await getTshirts(env);
+        break;
+        
+      default:
+        response = new Response('API endpoint not found', { status: 404 });
+    }
+    
+    // Add CORS headers
+    const headers = new Headers(response.headers);
+    Object.entries(corsHeaders).forEach(([key, value]) => {
+      headers.set(key, value);
+    });
+    
+    return new Response(response.body, {
+      status: response.status,
+      headers: headers
+    });
+    
+  } catch (error) {
+    console.error('API Error:', error);
+    return new Response(JSON.stringify({ 
+      error: 'Internal server error', 
+      message: error.message 
+    }), {
+      status: 500,
+      headers: { 
+        'Content-Type': 'application/json',
+        ...corsHeaders 
+      }
+    });
+  }
+}
+
+// Site Configuration
+async function getSiteConfig(env) {
+  try {
+    const config = await env.SITE_CONFIG?.get('main');
+    if (config) {
+      return new Response(config, {
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    const defaultConfig = {
+      hero: {
+        title: 'Where Roads Meet Cultures',
+        subtitle: 'Matatu Vibes • Tours • Stories',
+        logo: 'https://i.postimg.cc/pTfqYMTG/logo-png.jpg',
+        ctaText: 'Enter Gallery'
+      }
+    };
+    
+    return new Response(JSON.stringify(defaultConfig), {
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+  } catch (error) {
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+}
+
+// Slogans
+async function getSlogans(env) {
+  const defaultSlogans = {
+    slogans: [
+      'Matatu Vibes',
+      'Tours',
+      'Stories', 
+      'Digital Culture',
+      'Nairobi Streets'
+    ]
+  };
+  
+  return new Response(JSON.stringify(defaultSlogans), {
+    headers: { 'Content-Type': 'application/json' }
+  });
+}
+
+// Blog Posts
+async function getBlogPosts(env) {
+  try {
+    const posts = await env.BLOG_POSTS?.get('all');
+    if (posts) {
+      const parsedPosts = JSON.parse(posts);
+      return new Response(JSON.stringify({ 
+        posts: parsedPosts,
+        count: parsedPosts.length 
+      }), {
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    const defaultPosts = [
+      {
+        id: 'post-1',
+        title: 'Matatu Culture Chronicles',
+        excerpt: 'Stories from the streets of Nairobi and the heartbeat of matatu culture.',
+        content: 'Discover how these colorful vehicles became more than just transportation.',
+        publishedAt: new Date().toISOString(),
+        category: 'Culture',
+        readTime: '5 min',
+        aiGenerated: false
+      }
+    ];
+    
+    return new Response(JSON.stringify({ 
+      posts: defaultPosts,
+      count: defaultPosts.length 
+    }), {
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+  } catch (error) {
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+}
+
+// Generate Blog Post
+async function generateBlogPost(request, env) {
+  try {
+    const aiTopics = [
+      {
+        title: 'Nairobi Street Art Revolution',
+        excerpt: 'How matatu graffiti is transforming urban expression across East Africa.',
+        content: 'The vibrant world of matatu street art represents powerful cultural expression.',
+        category: 'Art & Culture'
+      },
+      {
+        title: 'Digital Nomads Meet Matatu Culture',
+        excerpt: 'The intersection of tech culture and traditional transport in modern Kenya.',
+        content: 'As Nairobi emerges as a tech hub, digital nomads discover rich cultural experiences.',
+        category: 'Technology'
+      }
+    ];
+    
+    const selectedTopic = aiTopics[Math.floor(Math.random() * aiTopics.length)];
+    
+    const newPost = {
+      id: `ai-post-${Date.now()}`,
+      title: selectedTopic.title,
+      excerpt: selectedTopic.excerpt,
+      content: selectedTopic.content,
+      publishedAt: new Date().toISOString(),
+      category: selectedTopic.category,
+      readTime: '3 min',
+      aiGenerated: true
+    };
+    
+    return new Response(JSON.stringify({ 
+      success: true, 
+      post: newPost 
+    }), {
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+  } catch (error) {
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+}
+
+// T-shirts
+async function getTshirts(env) {
+  const defaultTshirts = {
+    tshirts: [
+      {
+        id: 'tshirt-1',
+        name: 'Copilot Street Art Tee',
+        price: 12.00,
+        image: 'https://i.postimg.cc/McVzDFqp/copilot-image-1754411477259.png',
+        available: true
+      },
+      {
+        id: 'tshirt-2',
+        name: 'AI Culture Fusion Tee',
+        price: 12.00,
+        image: 'https://i.postimg.cc/mz4B6ygN/copilot-image-1754411481513.png',
+        available: true
+      }
+    ]
+  };
+  
+  return new Response(JSON.stringify(defaultTshirts), {
+    headers: { 'Content-Type': 'application/json' }
+  });
+}
